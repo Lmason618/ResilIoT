@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="IoT Dashboard for Soil Moisture, Rainfall, Temperature, Humidity, and River Height" />
+    <title>ResilIoT Dashboard</title>
+
+    <!-- Inter font  -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind styles-->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    <!-- Chart.js for data graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="h-screen flex flex-col font-inter bg-gray-900 text-white">
+<header class="bg-gray-800 shadow p-4">
+    <h1 class="text-3xl font-bold text-center">ResilIoT Dashboard</h1>
+</header>
+
+<div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-20 bg-gray-800 p-2 flex flex-col gap-4 items-center">
+        <button class="w-12 h-12 rounded-full bg-blue-400" title="Home"></button>
+        <button class="w-12 h-12 rounded-full bg-yellow-400" title="Alerts"></button>
+    </aside>
+
+    <!-- Main  -->
+    <main class="flex-1 overflow-hidden p-4 flex flex-col gap-4">
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Soil Saturation -->
+            <div class="sensor-card flex flex-col items-center justify-center p-4">
+                <h2 class="text-lg mb-2">Soil Saturation</h2>
+                <canvas id="soilGauge" width="120" height="120"></canvas>
+            </div>
+
+            <!-- Rainfall -->
+            <div class="sensor-card flex flex-col items-center justify-center p-4">
+                <h2 class="text-xl mb-2">Rainfall</h2>
+                <div class="text-4xl font-bold">12 mm</div>
+            </div>
+
+            <!-- Temperature & Humidity -->
+            <div class="sensor-card flex flex-col items-center justify-center p-4">
+                <h2 class="text-xl mb-2">Temperature</h2>
+                <div class="text-2xl">26°C</div>
+                <h2 class="text-xl mt-3 mb-1">Humidity</h2>
+                <div class="text-2xl">65%</div>
+            </div>
+
+            <!-- River Height -->
+            <div class="sensor-card flex flex-col items-center justify-center p-4">
+                <h2 class="text-xl mb-2">River Height</h2>
+                <div class="text-3xl font-bold">2.5 m</div>
+            </div>
+        </section>
+
+        <section class="graph-card h-80">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-xl">Historic Data chart</h2>
+                <div class="space-x-2">
+                    <button class="tab-btn" onclick="updateGraph('day')">Day</button>
+                    <button class="tab-btn" onclick="updateGraph('week')">Week</button>
+                    <button class="tab-btn" onclick="updateGraph('month')">Month</button>
+                    <button class="tab-btn" onclick="updateGraph('year')">Year</button>
+                </div>
+            </div>
+            <canvas id="historicChart" class="w-full h-full"></canvas>
+        </section>
+    </main>
+</div>
+
+<script src="scripts.js"></script>
+</body>
+
+</html>
