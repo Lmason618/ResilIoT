@@ -9,17 +9,24 @@
 #define DHTTYPE DHT22
 DHT dht(DHT_PIN, DHTTYPE);
 
+// config vars
+const int reportInterval = 60;     // s between reports
+const int idleSleepDelay = 10;     // s to wait after last tip before sleep
+const float rainfallPerTip = 0.2;  // mm of rain per tip
+
 // RTC so it persists after deep sleep
-RTC_DATA_ATTR int totalRain = 0;
+RTC_DATA_ATTR int totalTipCount = 0;
+RTC_DATA_ATTR int tipCountLastMinute = 0;
 RTC_DATA_ATTR time_t lastResetTime = 0;
+RTC_DATA_ATTR int lastHallState = -1;
 RTC_DATA_ATTR unsigned long lastTipMillis = 0;
 
-volatile int tipCount = 0;
-unsigned long bootTime = 0;
-unsigned long lastReportTime = 0;
+unsigned long bootMillis = 0;
+unsigned long lastReportMillis = 0;
 
 void IRAM_ATTR onTip() {
-  tipCount++;
+  tipCountLastMinute++;
+  totalTipCount++;
   lastTipMillis = millis();
 }
 
@@ -38,26 +45,49 @@ void printSensorReport() {
   struct tm timeinfo;
   getLocalTime(&timeinfo);
 
-  Serial.println("------ 60s Sensor Report ------");
+  float rainLastMinute = tipCountLastMinute * rainfallPerTip;
+  float rainTotal = totalTipCount * rainfallPerTip;
+
+  Serial.println("60s Sensor Report");
   Serial.printf("Time: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
   Serial.printf("Temperature: %.1f °C\n", temperature);
   Serial.printf("Humidity: %.1f %%\n", humidity);
   Serial.printf("Soil Moisture (Raw): %d\n", soilValue);
-  Serial.printf("Rainfall Rate (last min): %d mm/min\n", tipCount);
-  Serial.printf("Total Rainfall (since 9AM): %d mm\n", totalRain);
-  Serial.println("-------------------------------");
+  Serial.printf("Rainfall Rate (last min): %d mm/min\n", rainLastMinute);
+  Serial.printf("Total Rainfall (since 9AM): %d mm\n", rainTotal);
+  Serial.println("");
 
-  totalRain += tipCount;
-  tipCount = 0;
+  tipCountLastMinute = 0;
 
   if (timeinfo.tm_hour == 9 && now - lastResetTime > 3600) {
-    Serial.println("------ 24hr Rain Summary ------");
-    Serial.printf("Total Rainfall in last 24h: %d mm\n", totalRain);
-    Serial.println("-------------------------------");
+    Serial.println("24hr Rain Summary");
+    Serial.printf("Total Rainfall in last 24h: %d mm\n", rainTotal);
+    Serial.println("");
 
-    totalRain = 0;
+    totalTipCount = 0;
     lastResetTime = now;
   }
+}
+
+void goToDeepSleep() {
+  Serial.println("Preparing to sleep");
+
+  int currentState = digitalRead(HALL_PIN);
+  if (lastHallState == -1) {
+    lastHallState = currentState;
+  }
+
+  // Wake on !lastHallState
+  int wakeLevel = (lastHallState == 0) ? 1 : 0;
+  Serial.printf("Last Hall state: %d, waking on level: %d\n", lastHallState, wakeLevel);
+  lastHallState = currentState;
+
+  esp_sleep_enable_timer_wakeup(reportInterval * 1000000ULL); // Wake on time
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)HALL_PIN, wakeLevel); // wake on magnet change
+
+  Serial.println("Sleeping ");
+  delay(200);
+  esp_deep_sleep_start();
 }
 
 void setup() {
@@ -67,34 +97,31 @@ void setup() {
   dht.begin();
   pinMode(SOIL_PIN, INPUT);
   pinMode(HALL_PIN, INPUT_PULLDOWN);
-  attachInterrupt(digitalPinToInterrupt(HALL_PIN), onTip, RISING);
+  attachInterrupt(digitalPinToInterrupt(HALL_PIN), onTip, CHANGE);
 
   connectToWiFi();
   delay(1000);
 
-  bootTime = millis();
-  lastReportTime = bootTime;
+  bootMillis = millis();
+  lastReportTime = bootMillis;
+
+// If just booted, ensure lastTipMillis is valid
+  if (lastTipMillis == 0) lastTipMillis = bootMillis;
 
   printSensorReport();  // report on wake
 
 void loop() {
-  unsigned long now = millis();
+  unsigned long nowMillis = millis();
 
-  // Report again every 60s while awake
-  if (now - lastReportTime >= 60000) {
-    printSensorReport();
-    lastReportTime = now;
-  }
+  // Report every reportInterval seconds
+   if (nowMillis - lastReportMillis >= (unsigned long)reportInterval * 1000) {
+     printSensorReport();
+     lastReportMillis = nowMillis;
+   }
 
-  // If no magnet swings for 10s, go to sleep
-  if (now - lastTipMillis > 10000 && now - bootTime > 10000) {
-    Serial.println("No rain activity for 10s. Sleeping...");
+  // sleeps if no tips for idleSleepDelay seconds
+    if ((nowMillis - lastTipMillis >= (unsigned long)idleSleepDelay * 1000) && tipCountLastMinute == 0) {
+      goToDeepSleep();
+    }
 
-    esp_sleep_enable_timer_wakeup(60 * 1000000ULL);
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)HALL_PIN, 1);
-    delay(100);
-    esp_deep_sleep_start();
-  }
-
-  delay(100);
 }
