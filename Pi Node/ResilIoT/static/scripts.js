@@ -1,173 +1,111 @@
-/* Dummy graph, just for ui at the min. I need to impliment this later*/
-function main() {
-    'use strict';
+// Get refs to HTML elements
+const soilEl = document.getElementById('soil');
+const tempEl = document.getElementById('temp');
+const humEl = document.getElementById('hum');
+const rainEl = document.getElementById('rain');
+const riverEl = document.getElementById('river');
+const rainSince9El = document.getElementById('rain-since-9');
+const ctx = document.getElementById('sensorChart').getContext('2d');
+// Weather Forecast
+const forecastMinEl = document.getElementById('forecast-min');
+const forecastMaxEl = document.getElementById('forecast-max');
+const forecastRainProbEl = document.getElementById('forecast-rain-prob');
+const forecastRainIntensityEl = document.getElementById('forecast-rain-intensity');
 
-    var chart;
+// Alert
+const alertLevelEl = document.getElementById('alert-level');
+// Gauge elements
+const soilGaugeEl = document.getElementById('soilGauge');
+const riverGaugeEl = document.getElementById('riverGauge');
 
-    function createChart(data, labels) {
-        var ctx;
-        ctx = document.getElementById('historicChart').getContext('2d');
-        if (chart) {
-            chart.destroy();
-        }
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Soil Moisture',
-                        borderColor: '#3b82f6',
-                        backgroundColor: '#3b82f688',
-                        data: data.soil
-                    },
-                    {
-                        label: 'Rainfall (mm)',
-                        borderColor: '#6366f1',
-                        backgroundColor: '#6366f188',
-                        data: data.rain
-                    },
-                    {
-                        label: 'Temperature (°C)',
-                        borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b88',
-                        data: data.temp
-                    },
-                    {
-                        label: 'Humidity (%)',
-                        borderColor: '#10b981',
-                        backgroundColor: '#10b98188',
-                        data: data.hum
-                    },
-                    {
-                        label: 'River Height (m)',
-                        borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf688',
-                        data: data.river
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: '#f3f4f6',
-                            usePointStyle: true
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: {
-                            color: '#e5e7eb'
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            color: '#e5e7eb'
-                        }
-                    }
-                }
-            }
-        });
+
+let sensorChart = null;
+let currentRange = 'day';
+
+//  Gauges
+const soilOpts = {
+    angle: 0.15,
+    lineWidth: 0.44,
+    pointer: { length: 0.9, strokeWidth: 0.035 },
+    limitMax: false,
+    limitMin: false,
+    colorStart: '#ff0000',
+    colorStop: '#00ff00',
+    strokeColor: '#E0E0E0',
+    generateGradient: true,
+    highDpiSupport: true,
+    staticZones: [
+        { strokeStyle: "red", min: 0, max: 15 },
+        { strokeStyle: "green", min: 16, max: 80 },
+        { strokeStyle: "red", min: 81, max: 100 }
+    ]
+};
+const riverOpts = {
+    angle: 0.15,
+    lineWidth: 0.44,
+    pointer: { length: 0.9, strokeWidth: 0.035 },
+    limitMax: false,
+    limitMin: false,
+    strokeColor: '#E0E0E0',
+    generateGradient: true,
+    staticZones: [
+        { strokeStyle: "green", min: 0, max: 1.2 },
+        { strokeStyle: "yellow", min: 1.21, max: 1.5 },
+        { strokeStyle: "orange", min: 1.51, max: 1.8 },
+        { strokeStyle: "red", min: 1.81, max: 5 }
+    ],
+    highDpiSupport: true
+};
+const soilGauge = new Gauge(soilGaugeEl).setOptions(soilOpts);
+soilGauge.maxValue = 100;
+soilGauge.setMinValue(0);
+soilGauge.set(0);
+
+const riverGauge = new Gauge(riverGaugeEl).setOptions(riverOpts);
+riverGauge.maxValue = 5;
+riverGauge.setMinValue(0);
+riverGauge.set(0);
+
+// Get last sens readings
+async function fetchLatest() {
+    try {
+        const res = await fetch('/api/latest');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        updateGauges(data.soil, data.river);
+        tempEl.textContent = data.temp !== undefined ? data.temp + '°C' : '-';
+        humEl.textContent = data.hum !== undefined ? data.hum + '%' : '-';
+        rainEl.textContent = data.rain ?? '-';
+        rainSince9El.textContent = data.total_rain ?? '-';
+    } catch (err) {
+        console.error("Error fetching latest readings:", err);
+        soilEl.textContent = tempEl.textContent = humEl.textContent =
+            rainEl.textContent = riverEl.textContent = 'Error';
     }
-
-    function updateGraph(range) {
-        var dummyData, labels, i, days, months;
-
-        days = new Array(30);
-        for (i = 0; i < 30; i += 1) {
-            days[i] = 'Day ' + (i + 1);
-        }
-
-        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        dummyData = {
-            day: {
-                soil: [40, 42, 41, 43, 40],
-                rain: [2, 4, 1, 0, 3],
-                temp: [25, 26, 26, 27, 26],
-                hum: [60, 65, 63, 66, 64],
-                river: [2.4, 2.5, 2.5, 2.6, 2.5]
-            },
-            week: {
-                soil: [40, 42, 43, 45, 44, 43, 42],
-                rain: [12, 10, 5, 7, 3, 0, 0],
-                temp: [24, 25, 26, 27, 26, 25, 24],
-                hum: [60, 63, 64, 66, 67, 65, 64],
-                river: [2.3, 2.4, 2.5, 2.6, 2.5, 2.4, 2.3]
-            },
-            month: {
-                soil: (new Array(30)).fill(40),
-                rain: (new Array(30)).fill(2),
-                temp: (new Array(30)).fill(26),
-                hum: (new Array(30)).fill(65),
-                river: (new Array(30)).fill(2.5)
-            },
-            year: {
-                soil: (new Array(12)).fill(40),
-                rain: (new Array(12)).fill(20),
-                temp: (new Array(12)).fill(26),
-                hum: (new Array(12)).fill(65),
-                river: (new Array(12)).fill(2.5)
-            }
-        };
-
-        labels = {
-            day: ['08:00', '10:00', '12:00', '14:00', '16:00'],
-            week: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            month: days,
-            year: months
-        };
-
-        createChart(dummyData[range], labels[range]);
-    }
-
-    function renderSoilGauge(value) {
-        var ctx, gauge;
-        ctx = document.getElementById('soilGauge').getContext('2d');
-        gauge = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                datasets: [{
-                    data: [value, 100 - value],
-                    backgroundColor: ['#3b82f6', '#1f2937'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                cutout: '80%',
-                rotation: -90,
-                circumference: 180,
-                plugins: {
-                    tooltip: {
-                        enabled: false
-                    },
-                    legend: {
-                        display: false
-                    },
-                    title: {
-                        display: true,
-                        text: value + '%',
-                        position: 'bottom',
-                        color: '#ffffff',
-                        font: {
-                            size: 20
-                        }
-                    }
-                }
-            }
-        });
-        return gauge;
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        updateGraph('day');
-        renderSoilGauge(40);
-    });
 }
+async function fetchLocalForecast() {
+    try {
+        const res = await fetch('/api/forecast/today');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const forecast = data.forecast || {}; // fallback to empty object
+        // Check if data exists for today
+        if (!data || Object.keys(data).length === 0) {
+            forecastMinEl.textContent = 'No current forecast';
+            forecastMaxEl.textContent = 'No current forecast';
+            forecastRainProbEl.textContent = 'No current forecast';
+            forecastRainIntensityEl.textContent = 'No current forecast';
+            return;
+        }
 
-main();
+        forecastMinEl.textContent = `Min temp: ${forecast.min_temp ?? '-'}`;
+        forecastMaxEl.textContent = `Max temp: ${forecast.max_temp ?? '-'}`;
+        forecastRainProbEl.textContent = `Probability of rain: ${forecast.precip_prob != null ? forecast.precip_prob + '%' : '-'}`;
+        forecastRainIntensityEl.textContent = `Intensity of rain: ${forecast.precip_intensity ?? '-'}`;
+    } catch (err) {
+        console.error("Error fetching local forecast:", err);
+        forecastMinEl.textContent = forecastMaxEl.textContent =
+            forecastRainProbEl.textContent = forecastRainIntensityEl.textContent = 'Error';
+    }
+}
