@@ -1,44 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import "tailwindcss"; /* Hosted localy */
 
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: #1f2937;
-    color: white;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+/* Base layer */
+@layer base {
+    :root { color-scheme: dark; }
+
+    html, body { @apply h-full; }
+
+    body {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Symbol";
+        @apply min-h-screen flex flex-col bg-gray-900 text-white overflow-hidden;
+    }
+
+    header { @apply bg-gray-800 shadow p-4; }
+    h1 { @apply text-3xl font-bold text-center; }
 }
 
-.sensor-card {
-    background-color: #374151;
-    border-radius: 0.5rem;
+/*  Components layer */
+@layer components {
+    .layout { @apply flex flex-1 overflow-hidden; }
 
+    .app-sidebar { @apply w-20 bg-gray-800 p-2 flex flex-col gap-4 items-center; }
+
+    .btn-round { @apply w-12 h-12 rounded-full; }
+    .btn-home   { @apply bg-blue-400; }
+    .btn-light  { @apply bg-yellow-400; }
+    .btn-soil   { @apply bg-green-400; }
+    .btn-water  { @apply bg-pink-400; }
+    .btn-system { @apply bg-purple-400; }
+
+    .main { @apply flex-1 flex flex-col gap-4 p-4 overflow-auto; }
+
+    .grid-tiles { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-none; }
+
+    .sensor-card { @apply bg-gray-700 rounded-lg p-4 flex flex-col items-center justify-center; }
+
+    .weather-alert-cards { @apply grid grid-cols-1 md:grid-cols-2 gap-4; }
+    .weather-card, .alert-card { @apply bg-gray-700 rounded-lg p-4 flex flex-col items-center text-center;}
+
+    .graph-card { @apply bg-gray-700 rounded-lg p-4 flex flex-col gap-2 flex-1 min-h-0 overflow-hidden; }
+    .graph-titlebar { @apply flex justify-between items-center mb-2; }
+
+    .btn-group { @apply space-x-2; }
+
+    .range-btn { @apply bg-gray-600 text-gray-300 px-3 py-1 rounded-md font-semibold transition; }
+    .range-btn:hover { @apply bg-gray-500 text-white; }
+    .range-btn:focus { @apply outline outline-2 outline-blue-600 outline-offset-2; }
 }
 
-.graph-card {
-    background-color: #374151;
-    border-radius: 0.5rem;
-    padding: 1rem;
+/* Plain CSS  */
+.sensor-card canvas {
+    width: 100% !important;
+    height: 8rem !important;
 }
 
-/* side bar tabs*/
-.tab-btn {
-    background-color: #4b5563;
-    color: #d1d5db;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    border: none;
-    font-weight: 600;
-    transition: background-color 0.3s;
-}
-
-.tab-btn:hover {
-    background-color: #6b7280;
-    color: white;
-}
-
-.tab-btn:focus {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
+.graph-card canvas {
+    flex: 1 1 0;
+    width: 100% !important;
+    height: 90% !important;
+    overflow: hidden;
 }

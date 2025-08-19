@@ -10,74 +10,93 @@
     <!-- Inter font  -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
-    <!-- Tailwind styles-->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Tailwind now run localy-->
+    <link href="./output.css" rel="stylesheet">
 
     <!-- Chart.js for data graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="../static/styles.css">
 </head>
 
-<body class="h-screen flex flex-col font-inter bg-gray-900 text-white">
-<header class="bg-gray-800 shadow p-4">
-    <h1 class="text-3xl font-bold text-center">ResilIoT Dashboard</h1>
+<body>
+<header class="relative">
+    <h1 class=>ResilIoT Dashboard</h1>
 </header>
 
-<div class="flex flex-1 overflow-hidden">
+<div class="layout">
     <!-- Sidebar -->
-    <aside class="w-20 bg-gray-800 p-2 flex flex-col gap-4 items-center">
-        <button class="w-12 h-12 rounded-full bg-blue-400" title="Home"></button>
-        <button class="w-12 h-12 rounded-full bg-yellow-400" title="Alerts"></button>
+    <aside class="app-sidebar">
+        <button class="btn-round btn-home"   title="Home"></button>
+        <button class="btn-round btn-light"  title="Alert"></button>
+        <button class="btn-round btn-soil"   title="Accessibility"></button>
     </aside>
 
     <!-- Main  -->
-    <main class="flex-1 overflow-hidden p-4 flex flex-col gap-4">
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <main class="main">
+        <section class="grid-tiles">
             <!-- Soil Saturation -->
-            <div class="sensor-card flex flex-col items-center justify-center p-4">
-                <h2 class="text-lg mb-2">Soil Saturation</h2>
-                <canvas id="soilGauge" width="120" height="120"></canvas>
+            <div class="sensor-card">
+                <div id="soil" class="text-3xl font-bold">-</div>
+                <canvas id="soilGauge"></canvas>
             </div>
 
             <!-- Rainfall -->
-            <div class="sensor-card flex flex-col items-center justify-center p-4">
-                <h2 class="text-xl mb-2">Rainfall</h2>
-                <div class="text-4xl font-bold">12 mm</div>
+            <div class="sensor-card">
+                <h2 class="text-xl mb-2">Rainfall (mm/min)</h2>
+                <div id="rain" class="text-4xl font-bold">-</div>
+                <h3 class="mt-2 text-sm">Total since 9am:</h3>
+                <div id="rain-since-9" class="text-xl font-semibold">-</div>
             </div>
 
             <!-- Temperature & Humidity -->
-            <div class="sensor-card flex flex-col items-center justify-center p-4">
+            <div class="sensor-card">
                 <h2 class="text-xl mb-2">Temperature</h2>
-                <div class="text-2xl">26°C</div>
+                <div id="temp" class="text-2xl">-</div>
                 <h2 class="text-xl mt-3 mb-1">Humidity</h2>
-                <div class="text-2xl">65%</div>
+                <div id="hum" class="text-2xl">-</div>
             </div>
 
             <!-- River Height -->
-            <div class="sensor-card flex flex-col items-center justify-center p-4">
+            <div class="sensor-card">
                 <h2 class="text-xl mb-2">River Height</h2>
-                <div class="text-3xl font-bold">2.5 m</div>
+                <div id="river" class="text-3xl font-bold">-</div>
+                <canvas id="riverGauge"></canvas>
             </div>
         </section>
 
-        <section class="graph-card h-80">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-xl">Historic Data chart</h2>
-                <div class="space-x-2">
-                    <button class="tab-btn" onclick="updateGraph('day')">Day</button>
-                    <button class="tab-btn" onclick="updateGraph('week')">Week</button>
-                    <button class="tab-btn" onclick="updateGraph('month')">Month</button>
-                    <button class="tab-btn" onclick="updateGraph('year')">Year</button>
+        <div class="weather-alert-cards">
+            <!-- Weather Forecast -->
+            <div class="weather-card">
+                <h3 class="text-lg font-semibold mb-2">Forecast for Today</h3>
+                <p id="forecast-min">Min temp: -</p>
+                <p id="forecast-max">Max temp: -</p>
+                <p id="forecast-rain-prob">Probability of rain: -</p>
+                <p id="forecast-rain-intensity">Intensity of rain: -</p>
+            </div>
+
+            <!-- Alert Level Card -->
+            <div class="alert-card">
+                <h3 class="text-lg font-semibold mb-2">Alert Level</h3>
+                <p id="alert-level">None</p>
+            </div>
+        </div>
+
+        <section class="graph-card">
+            <div class="graph-titlebar">
+                <h2 class="text-xl">Historic Data Chart</h2>
+                <div class="btn-group">
+                    <button class="range-btn" data-range="day">Day</button>
+                    <button class="range-btn" data-range="week">Week</button>
+                    <button class="range-btn" data-range="month">Month</button>
+                    <button class="range-btn" data-range="year">Year</button>
                 </div>
             </div>
-            <canvas id="historicChart" class="w-full h-full"></canvas>
+            <canvas id="sensorChart"></canvas>
         </section>
     </main>
 </div>
 
-<script src="../static/scripts.js"></script>
+<script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 
 </html>
