@@ -66,6 +66,15 @@ riverGauge.maxValue = 5;
 riverGauge.setMinValue(0);
 riverGauge.set(0);
 
+// Update gauges and DOM
+function updateGauges(soil, river) {
+    soilEl.textContent = soil !== undefined ? `${soil}%` : '-';
+    riverEl.textContent = river !== undefined ? `${river} m` : '-';
+
+    if (soil !== undefined) soilGauge.set(soil);
+    if (river !== undefined) riverGauge.set(river);
+}
+
 // Get last sens readings
 async function fetchLatest() {
     try {
@@ -111,6 +120,77 @@ async function fetchLocalForecast() {
 }
 
 
+// Fetch data and update chart
+async function updateChart(range = currentRange) {
+    try {
+        const res = await fetch(`/api/historic/${range}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        const datasets = [
+            { label: 'Soil (%)', data: data.soil, borderColor: 'green', fill: false },
+            { label: 'Temp (°C)', data: data.temp, borderColor: 'red', fill: false },
+            { label: 'Humidity (%)', data: data.hum, borderColor: 'blue', fill: false },
+            { label: 'Rain Max (mm/min)', data: data.rain_max, borderColor: 'aqua', fill: false },
+            { label: 'Rain Total (mm)', data: data.rain_total, borderColor: 'skyblue', fill: false },
+            { label: 'River Height (m)', data: data.river, borderColor: 'purple', fill: false }
+        ];
+
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { type: 'category', ticks: { autoSkip: true, maxTicksLimit: 12 } },
+            },
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: true } }
+        };
+
+        if (!sensorChart) {
+            sensorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets
+                },
+                options
+            });
+        } else {
+            sensorChart.data.labels = data.labels;
+            sensorChart.data.datasets.forEach((ds, i) => ds.data = datasets[i].data);
+            sensorChart.update();
+        }
+    } catch (err) {
+        console.error("Error updating chart:", err);
+        if (sensorChart) {
+            sensorChart.data.labels = [];
+            sensorChart.data.datasets.forEach(ds => ds.data = []);
+            sensorChart.update();
+        }
+    }
+}
+
+// Fetch alert from api.py
+async function fetchLocalAlert() {
+    try {
+        const res = await fetch('/api/alert/latest');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        alertLevelEl.textContent = data.level ?? 'No data';
+    } catch (err) {
+        console.error("Error fetching local alert:", err);
+        alertLevelEl.textContent = 'Error';
+    }
+}
+
+// Update all alerts/forecast
+async function updateAllAlerts() {
+    await fetchLatest();
+    await fetchLocalForecast();
+    await fetchLocalAlert();
+}
+
 // Set button listeners
 document.querySelectorAll('.range-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -120,10 +200,13 @@ document.querySelectorAll('.range-btn').forEach(btn => {
 });
 
 fetchLatest();
-fetchLocalForecast();
+updateChart();
+updateAllAlerts();
 
 
 // Refresh 60s
 setInterval(() => {
     fetchLatest();
+    updateChart(currentRange);
+    updateAllAlerts();
 }, 60000);
