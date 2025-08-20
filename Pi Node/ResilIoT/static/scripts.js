@@ -109,3 +109,21 @@ async function fetchLocalForecast() {
             forecastRainProbEl.textContent = forecastRainIntensityEl.textContent = 'Error';
     }
 }
+
+
+// Set button listeners
+document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentRange = btn.dataset.range;
+        updateChart(currentRange);
+    });
+});
+
+fetchLatest();
+fetchLocalForecast();
+
+
+// Refresh 60s
+setInterval(() => {
+    fetchLatest();
+}, 60000);
