@@ -2,12 +2,18 @@
 #include <time.h>
 #include <DHT.h>
 #include <Adafruit_Sensor.h>
+#include <LoRa.h>
 
 #define HALL_PIN 14
 #define DHT_PIN 4
 #define SOIL_PIN 33
 #define DHTTYPE DHT22
 DHT dht(DHT_PIN, DHTTYPE);
+
+#define LORA_SS   5
+#define LORA_RST  27
+#define LORA_DIO0 26
+#define LORA_FREQ 434E6  // freq 434Mhz
 
 // config vars
 const int reportInterval = 60;     // s between reports
@@ -36,6 +42,13 @@ void connectToWiFi() {
   configTime(0, 0, "pool.ntp.org");
 }
 
+void sendLoRaReport(float temperature, float humidity, int soilValue, float rainLastMinute, float rainTotal) {
+  LoRa.beginPacket();
+  LoRa.printf("Temp:%.1fC,Hum:%.1f%%,Soil:%d,RainRate:%.1fmm,TotalRain:%.1fmm",
+              temperature, humidity, soilValue, rainLastMinute, rainTotal);
+  LoRa.endPacket();
+}
+
 void printSensorReport() {
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
@@ -56,6 +69,10 @@ void printSensorReport() {
   Serial.printf("Rainfall Rate (last min): %d mm/min\n", rainLastMinute);
   Serial.printf("Total Rainfall (since 9AM): %d mm\n", rainTotal);
   Serial.println("");
+
+ // Send via LoRa
+  sendLoRaReport(temperature, humidity, soilValue, rainLastMinute, rainTotal);
+
 
   tipCountLastMinute = 0;
 
@@ -94,6 +111,17 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+ LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+  if (!LoRa.begin(LORA_FREQ)) {
+    Serial.println("Starting LoRa failed!");
+    while (1);
+  }
+  LoRa.setSpreadingFactor(7);
+  LoRa.setSignalBandwidth(125000);
+  LoRa.setCodingRate4(5);
+  LoRa.setSyncWord(0x12);
+
+
   dht.begin();
   pinMode(SOIL_PIN, INPUT);
   pinMode(HALL_PIN, INPUT_PULLDOWN);
@@ -103,7 +131,7 @@ void setup() {
   delay(1000);
 
   bootMillis = millis();
-  lastReportTime = bootMillis;
+  lastReportMillis = bootMillis;
 
 // If just booted, ensure lastTipMillis is valid
   if (lastTipMillis == 0) lastTipMillis = bootMillis;
