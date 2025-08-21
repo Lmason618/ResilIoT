@@ -1,54 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="IoT Dashboard for Soil Moisture, Rainfall, Temperature, Humidity, and River Height" />
-    <title>ResilIoT Dashboard</title>
+    <meta name="description" content="IoT Dashboard for Soil Moisture, Rainfall, Temperature, Humidity, and >
+  <title>ResilIoT Dashboard</title>
 
-    <!-- Inter font  -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="styleshee>
 
-    <!-- Tailwind now run localy-->
-    <link href="./output.css" rel="stylesheet">
+    <!-- Compiled Tailwind + your styles -->
+    <link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet">
 
-    <!-- Chart.js for data graphs -->
+    <!-- Chart libs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/gaugeJS/dist/gauge.min.js"></script>
 </head>
 
 <body>
 <header class="relative">
-    <h1 class=>ResilIoT Dashboard</h1>
+    <h1>ResilIoT Dashboard</h1>
+    <a href="{{ url_for('auth.logout') }}"
+       class="absolute top-4 right-4 bg-red-600 px-3 py-1 rounded">
+        Logout
+    </a>
 </header>
 
 <div class="layout">
     <!-- Sidebar -->
     <aside class="app-sidebar">
         <button class="btn-round btn-home"   title="Home"></button>
-        <button class="btn-round btn-light"  title="Alert"></button>
-        <button class="btn-round btn-soil"   title="Accessibility"></button>
+        <a href="{{ url_for('api.set_thresholds_page') }}">
+            <button class="btn-round btn-light" title="Alert"></button>
+        </a>
+        <button class="btn-round btn-access"   title="Soil"></button>
     </aside>
 
-    <!-- Main  -->
+    <!-- Main Content -->
     <main class="main">
         <section class="grid-tiles">
             <!-- Soil Saturation -->
             <div class="sensor-card">
+                <h2 class="text-lg mb-2">Soil Saturation</h2>
                 <div id="soil" class="text-3xl font-bold">-</div>
                 <canvas id="soilGauge"></canvas>
             </div>
 
             <!-- Rainfall -->
             <div class="sensor-card">
-                <h2 class="text-xl mb-2">Rainfall (mm/min)</h2>
+                <h2 class="text-xl mb-2">Rainfall (per min)</h2>
                 <div id="rain" class="text-4xl font-bold">-</div>
                 <h3 class="mt-2 text-sm">Total since 9am:</h3>
                 <div id="rain-since-9" class="text-xl font-semibold">-</div>
             </div>
 
-            <!-- Temperature & Humidity -->
+            <!-- Temp + Hum -->
             <div class="sensor-card">
                 <h2 class="text-xl mb-2">Temperature</h2>
                 <div id="temp" class="text-2xl">-</div>
@@ -83,7 +89,7 @@
 
         <section class="graph-card">
             <div class="graph-titlebar">
-                <h2 class="text-xl">Historic Data Chart</h2>
+                <h2 class="text-xl">Historic Data</h2>
                 <div class="btn-group">
                     <button class="range-btn" data-range="day">Day</button>
                     <button class="range-btn" data-range="week">Week</button>
@@ -98,5 +104,5 @@
 
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
-
 </html>
+

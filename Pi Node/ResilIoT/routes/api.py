@@ -1,9 +1,11 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for
 from routes.auth import login_required
 from datetime import datetime, timedelta
 import sqlite3
 import traceback
 from collections import defaultdict
+import os, json
+from utils.config import load_thresholds, save_thresholds
 
 api_bp = Blueprint('api', __name__)
 DB_PATH = './db/sensor_data.db'
@@ -20,6 +22,24 @@ def safe_fetchone(conn, query, params=()):
     except Exception as e:
         print(f"[safe_fetchone] Error: {e}")
         return None
+
+THRESHOLDS_FILE = os.path.join(os.path.dirname(__file__), "..", "db", "thresholds.json")
+
+def load_thresholds():
+    try:
+        with open(THRESHOLDS_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {
+            "low": {"river": 2.0, "soil_min": 20, "soil_max": 80},
+            "mid": {"river": 2.2, "soil_min": 15, "soil_max": 85},
+            "high": {"river": 2.5, "soil_min": 10, "soil_max": 90}
+        }
+
+def save_thresholds(thresholds):
+    with open(THRESHOLDS_FILE, "w") as f:
+        json.dump(thresholds, f, indent=2)
+
 
 # /latest
 @api_bp.route('/latest')
@@ -202,8 +222,57 @@ def historic(period_range):
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
+# user def alert levels handling
+@api_bp.route('/alert/params', methods=['GET', 'POST'])
+@login_required
+def set_thresholds_page():
+    try:
+        thresholds = load_thresholds()
 
-# /alert/latest
+        if request.method == 'POST':
+            new_values = {}
+            for level in ['Low', 'Mid', 'High']:
+                lv = {}
+                for field in ['river_max', 'soil_min', 'soil_max']:
+                    key = f"{level}[{field}]"
+                    raw = request.form.get(key, '').strip()
+                    if raw == '':
+                        raise ValueError(f"Missing value for {key}")
+                    lv[field] = float(raw) if field == 'river_max' else int(raw)
+                new_values[level] = lv
+
+            # Some Basic validation; look at later!
+            for level, v in new_values.items():
+                if v['soil_min'] >= v['soil_max']:
+                    return render_template(
+                        'params.html',
+                        thresholds=thresholds,
+                        error=f"{level}: soil_min must be < soil_max"
+                    ), 400
+
+            # Enforce sequence river_max (Low ≤ Mid ≤ High)
+            if not (new_values['Low']['river_max'] <= new_values['Mid']['river_max'] <= new_values['High']>
+                return render_template(
+                    'params.html',
+                    thresholds=thresholds,
+                    error="River Max must follow Low ≤ Mid ≤ High"
+                ), 400
+
+            # Save to JSON
+            save_thresholds(new_values)
+            return render_template('params.html', thresholds=new_values, message="Parameters updated succe>
+
+        # GET: load current thresholds
+        return render_template('params.html', thresholds=thresholds)
+
+    except Exception as e:
+        thresholds = load_thresholds()
+        return render_template(
+            'params.html',
+            thresholds=thresholds,
+            error=f"Failed to update: {e}"
+        ), 500
+
 @api_bp.route('/alert/latest')
 @login_required
 def latest_alert():
@@ -228,17 +297,25 @@ def latest_alert():
 
         rain_intensity = (forecast_data.get("forecast", {}).get("precip_intensity") or "none").lower()
 
-        # Alert Logic
+        # Load thresholds from JSON
+        T = load_thresholds()
+
+        # Start with None
         alert = "None"
-        if river > 2.5 or high_level_alert == 1:
+
+        # Immediate High conditions
+        if river > T["High"]["river_max"] or high_level_alert == 1:
             alert = "High"
-        if 20 <= soil <= 80:
+        # Soil in safe range → None or Low depending on rain
+        elif T["Low"]["soil_min"] <= soil <= T["Low"]["soil_max"]:
             if rain_intensity in ["none", "light"]:
                 alert = "None"
             elif rain_intensity in ["moderate", "heavy"]:
-                alert = "Low"
-        elif soil < 20 or soil > 80:
-            if rain_intensity == "moderate" and (river > 2 or soil < 20 or soil > 80):
+                # Only Low if river is below the Low threshold
+                alert = "Low" if river <= T["Low"]["river_max"] else "Mid"
+        # Soil outside safe range → Mid (moderate + river below mid) or High (heavy or immediate)
+        elif soil < T["Low"]["soil_min"] or soil > T["Low"]["soil_max"]:
+            if rain_intensity == "moderate" and river <= T["Mid"]["river_max"]:
                 alert = "Mid"
             if rain_intensity == "heavy" or high_level_alert == 1:
                 alert = "High"
@@ -248,3 +325,4 @@ def latest_alert():
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"level": "No data", "error": str(e)}), 500
+

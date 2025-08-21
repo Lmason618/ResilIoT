@@ -191,13 +191,6 @@ async function updateAllAlerts() {
     await fetchLocalAlert();
 }
 
-// Set button listeners
-document.querySelectorAll('.range-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        currentRange = btn.dataset.range;
-        updateChart(currentRange);
-    });
-});
 
 fetchLatest();
 updateChart();
