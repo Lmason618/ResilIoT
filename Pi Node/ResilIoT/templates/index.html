@@ -1,108 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="IoT Dashboard for Soil Moisture, Rainfall, Temperature, Humidity, and >
-  <title>ResilIoT Dashboard</title>
+    <meta name="description" content="IoT Dashboard for Soil Moisture, Rainfall, Temperature, Humidity, and River Height" />
+    <title>ResilIoT Dashboard</title>
 
-  <!-- Inter font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="styleshee>
+    <!-- Inter font  -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
 
-    <!-- Compiled Tailwind + your styles -->
-    <link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet">
+    <!-- Tailwind locally -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}">
 
-    <!-- Chart libs -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gaugeJS/dist/gauge.min.js"></script>
 </head>
 
 <body>
-<header class="relative">
+<header>
     <h1>ResilIoT Dashboard</h1>
-    <a href="{{ url_for('auth.logout') }}"
-       class="absolute top-4 right-4 bg-red-600 px-3 py-1 rounded">
-        Logout
-    </a>
 </header>
 
 <div class="layout">
     <!-- Sidebar -->
     <aside class="app-sidebar">
-        <button class="btn-round btn-home"   title="Home"></button>
-        <a href="{{ url_for('api.set_thresholds_page') }}">
-            <button class="btn-round btn-light" title="Alert"></button>
-        </a>
-        <button class="btn-round btn-access"   title="Soil"></button>
+        <button class="btn-round btn-home"   title="Home">Home</button>
+        <button class="btn-round btn-alert"  title="Alert">Alert</button>
+        <button class="btn-round btn-access"   title="Accessibility">Access</button>
+
     </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-        <section class="grid-tiles">
-            <!-- Soil Saturation -->
-            <div class="sensor-card">
-                <h2 class="text-lg mb-2">Soil Saturation</h2>
-                <div id="soil" class="text-3xl font-bold">-</div>
-                <canvas id="soilGauge"></canvas>
-            </div>
-
-            <!-- Rainfall -->
-            <div class="sensor-card">
-                <h2 class="text-xl mb-2">Rainfall (per min)</h2>
-                <div id="rain" class="text-4xl font-bold">-</div>
-                <h3 class="mt-2 text-sm">Total since 9am:</h3>
-                <div id="rain-since-9" class="text-xl font-semibold">-</div>
-            </div>
-
-            <!-- Temp + Hum -->
-            <div class="sensor-card">
-                <h2 class="text-xl mb-2">Temperature</h2>
-                <div id="temp" class="text-2xl">-</div>
-                <h2 class="text-xl mt-3 mb-1">Humidity</h2>
-                <div id="hum" class="text-2xl">-</div>
-            </div>
-
-            <!-- River Height -->
-            <div class="sensor-card">
-                <h2 class="text-xl mb-2">River Height</h2>
-                <div id="river" class="text-3xl font-bold">-</div>
-                <canvas id="riverGauge"></canvas>
-            </div>
-        </section>
-
-        <div class="weather-alert-cards">
-            <!-- Weather Forecast -->
-            <div class="weather-card">
-                <h3 class="text-lg font-semibold mb-2">Forecast for Today</h3>
-                <p id="forecast-min">Min temp: -</p>
-                <p id="forecast-max">Max temp: -</p>
-                <p id="forecast-rain-prob">Probability of rain: -</p>
-                <p id="forecast-rain-intensity">Intensity of rain: -</p>
-            </div>
-
-            <!-- Alert Level Card -->
-            <div class="alert-card">
-                <h3 class="text-lg font-semibold mb-2">Alert Level</h3>
-                <p id="alert-level">None</p>
-            </div>
-        </div>
-
-        <section class="graph-card">
-            <div class="graph-titlebar">
-                <h2 class="text-xl">Historic Data</h2>
-                <div class="btn-group">
-                    <button class="range-btn" data-range="day">Day</button>
-                    <button class="range-btn" data-range="week">Week</button>
-                    <button class="range-btn" data-range="month">Month</button>
-                    <button class="range-btn" data-range="year">Year</button>
-                </div>
-            </div>
-            <canvas id="sensorChart"></canvas>
-        </section>
+    <!-- Main content -->
+    <main id="main-content" class="main">
+        <!-- Content loads dynamically -->
     </main>
 </div>
 
-<script src="{{ url_for('static', filename='scripts.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts_index.js') }}"></script>
+
 </body>
 </html>
-

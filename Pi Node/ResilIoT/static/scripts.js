@@ -1,3 +1,4 @@
+function initHome(){
 // Get refs to HTML elements
 const soilEl = document.getElementById('soil');
 const tempEl = document.getElementById('temp');
@@ -198,8 +199,13 @@ updateAllAlerts();
 
 
 // Refresh 60s
-setInterval(() => {
-    fetchLatest();
-    updateChart(currentRange);
-    updateAllAlerts();
-}, 60000);
+    setInterval(() => {
+        const main = document.getElementById('main-content');
+        if (main && main.dataset.current === 'home.html') {
+            fetchLatest();
+            updateChart(currentRange);
+            updateAllAlerts();
+        }
+    }, 60000);
+
+}

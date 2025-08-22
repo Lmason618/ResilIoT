@@ -1,11 +1,11 @@
-from flask import Blueprint, jsonify, request, render_template, redirect, url_for
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, get_flashed_messages
 from routes.auth import login_required
 from datetime import datetime, timedelta
 import sqlite3
 import traceback
 from collections import defaultdict
 import os, json
-from utils.config import load_thresholds, save_thresholds
+from utils.params_helper import load_thresholds, save_thresholds
 
 api_bp = Blueprint('api', __name__)
 DB_PATH = './db/sensor_data.db'
@@ -24,22 +24,6 @@ def safe_fetchone(conn, query, params=()):
         return None
 
 THRESHOLDS_FILE = os.path.join(os.path.dirname(__file__), "..", "db", "thresholds.json")
-
-def load_thresholds():
-    try:
-        with open(THRESHOLDS_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {
-            "low": {"river": 2.0, "soil_min": 20, "soil_max": 80},
-            "mid": {"river": 2.2, "soil_min": 15, "soil_max": 85},
-            "high": {"river": 2.5, "soil_min": 10, "soil_max": 90}
-        }
-
-def save_thresholds(thresholds):
-    with open(THRESHOLDS_FILE, "w") as f:
-        json.dump(thresholds, f, indent=2)
-
 
 # /latest
 @api_bp.route('/latest')
@@ -251,16 +235,18 @@ def set_thresholds_page():
                     ), 400
 
             # Enforce sequence river_max (Low ≤ Mid ≤ High)
-            if not (new_values['Low']['river_max'] <= new_values['Mid']['river_max'] <= new_values['High']>
+            if not (new_values['Low']['river_max'] <= new_values['Mid']['river_max'] <= new_values['High']['river_max']):
                 return render_template(
                     'params.html',
                     thresholds=thresholds,
                     error="River Max must follow Low ≤ Mid ≤ High"
                 ), 400
 
-            # Save to JSON
+            # After successful save
             save_thresholds(new_values)
-            return render_template('params.html', thresholds=new_values, message="Parameters updated succe>
+            flash("Parameters updated successfully", "success")
+            return redirect(url_for("dynaminsert.index", open="params"))
+
 
         # GET: load current thresholds
         return render_template('params.html', thresholds=thresholds)

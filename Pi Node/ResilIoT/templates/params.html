@@ -1,96 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Alert Parameters - ResilIoT</title>
-    <link href="{{ url_for('static', filename='output.css') }}" rel="stylesheet">
-</head>
-<body class="min-h-screen flex items-center justify-center bg-gray-900 text-white font-inter">
 
 <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-lg p-6">
     <h1 class="text-2xl font-bold text-center mb-6">Set Alert Parameters</h1>
 
-    {% if message %}
-    <div class="mb-4 p-3 rounded bg-green-600 text-sm text-white text-center">
-        {{ message }}
-    </div>
-    {% endif %}
-    {% if error %}
-    <div class="mb-4 p-3 rounded bg-red-600 text-sm text-white text-center">
-        {{ error }}
-    </div>
-    {% endif %}
+        {# Flash messages (success/error) #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, msg in messages %}
+        <div class="mb-4 p-3 rounded
+                            {% if category == 'success' %} bg-green-600
+                            {% elif category == 'error' %} bg-red-600
+                            {% else %} bg-gray-600 {% endif %}
+                            text-sm text-white text-center">
+            {{ msg }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
 
     <form method="POST" action="{{ url_for('api.set_thresholds_page') }}" class="flex flex-col gap-6">
 
-        <!-- Low Alert -->
+        {% for level, color in [('Low','green-400'), ('Mid','yellow-400'), ('High','red-400')] %}
         <div class="p-4 rounded-lg bg-gray-700">
-            <h2 class="text-lg font-semibold mb-3 text-green-400">Low Alert</h2>
+            <h2 class="text-lg font-semibold mb-3 text-{{ color }}">{{ level }} Alert</h2>
 
-            <label class="block text-sm mb-1" for="low_river_max">River Max (m)</label>
-            <input type="number" step="0.1" id="low_river_max" name="Low[river_max]"
-                   value="{{ thresholds['Low']['river_max'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
+            <label class="block text-sm mb-1" for="{{ level|lower }}_river_max">River Max (m)</label>
+            <input type="number" step="0.1" id="{{ level|lower }}_river_max" name="{{ level }}[river_max]"
+                   value="{{ thresholds[level]['river_max'] if thresholds and level in thresholds else '' }}"
+                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
 
-      <label class="block text-sm mb-1" for="low_soil_min">Soil Min (%)</label>
-            <input type="number" id="low_soil_min" name="Low[soil_min]"
-                   value="{{ thresholds['Low']['soil_min'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
+            <label class="block text-sm mb-1" for="{{ level|lower }}_soil_min">Soil Min (%)</label>
+            <input type="number" id="{{ level|lower }}_soil_min" name="{{ level }}[soil_min]"
+                   value="{{ thresholds[level]['soil_min'] if thresholds and level in thresholds else '' }}"
+                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
 
-      <label class="block text-sm mb-1" for="low_soil_max">Soil Max (%)</label>
-            <input type="number" id="low_soil_max" name="Low[soil_max]"
-                   value="{{ thresholds['Low']['soil_max'] }}"
-                   class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:r>
-    </div>
+            <label class="block text-sm mb-1" for="{{ level|lower }}_soil_max">Soil Max (%)</label>
+            <input type="number" id="{{ level|lower }}_soil_max" name="{{ level }}[soil_max]"
+                   value="{{ thresholds[level]['soil_max'] if thresholds and level in thresholds else '' }}"
+                   class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+        </div>
+        {% endfor %}
 
-    <!-- Mid Alert -->
-    <div class="p-4 rounded-lg bg-gray-700">
-            <h2 class="text-lg font-semibold mb-3 text-yellow-400">Mid Alert</h2>
-
-            <label class="block text-sm mb-1" for="mid_river_max">River Max (m)</label>
-            <input type="number" step="0.1" id="mid_river_max" name="Mid[river_max]"
-                   value="{{ thresholds['Mid']['river_max'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
-
-      <label class="block text-sm mb-1" for="mid_soil_min">Soil Min (%)</label>
-            <input type="number" id="mid_soil_min" name="Mid[soil_min]"
-                   value="{{ thresholds['Mid']['soil_min'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
-
-      <label class="block text-sm mb-1" for="mid_soil_max">Soil Max (%)</label>
-            <input type="number" id="mid_soil_max" name="Mid[soil_max]"
-                   value="{{ thresholds['Mid']['soil_max'] }}"
-                   class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:r>
-    </div>
-
-    <!-- High Alert -->
-    <div class="p-4 rounded-lg bg-gray-700">
-            <h2 class="text-lg font-semibold mb-3 text-red-400">High Alert</h2>
-
-            <label class="block text-sm mb-1" for="high_river_max">River Max (m)</label>
-            <input type="number" step="0.1" id="high_river_max" name="High[river_max]"
-                   value="{{ thresholds['High']['river_max'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
-
-      <label class="block text-sm mb-1" for="high_soil_min">Soil Min (%)</label>
-            <input type="number" id="high_soil_min" name="High[soil_min]"
-                   value="{{ thresholds['High']['soil_min'] }}"
-                   class="w-full px-3 py-2 mb-3 rounded bg-gray-600 border border-gray-500 focus:outline-none fo>
-
-      <label class="block text-sm mb-1" for="high_soil_max">Soil Max (%)</label>
-            <input type="number" id="high_soil_max" name="High[soil_max]"
-                   value="{{ thresholds['High']['soil_max'] }}"
-                   class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:r>
-    </div>
-
-    <button type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transitio>
-            Save Parameters
-            </button>
+        <button type="submit" class="w-full py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700">
+            Update Parameters
+        </button>
     </form>
 </div>
-
-</body>
-</html>
-

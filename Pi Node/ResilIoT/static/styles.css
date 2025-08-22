@@ -15,18 +15,23 @@
     h1 { @apply text-3xl font-bold text-center; }
 }
 
-/*  Components layer */
+/*  Components */
 @layer components {
     .layout { @apply flex flex-1 overflow-hidden; }
 
     .app-sidebar { @apply w-20 bg-gray-800 p-2 flex flex-col gap-4 items-center; }
 
-    .btn-round { @apply w-12 h-12 rounded-full; }
-    .btn-home   { @apply bg-blue-400; }
-    .btn-light  { @apply bg-yellow-400; }
-    .btn-soil   { @apply bg-green-400; }
-    .btn-water  { @apply bg-pink-400; }
-    .btn-system { @apply bg-purple-400; }
+    .btn-round {
+        @apply w-16 h-12 rounded-lg font-semibold text-gray-200 text-sm flex items-center justify-center transition;
+    }
+    .btn-home   { @apply bg-blue-600 hover:bg-blue-700; }
+    .btn-alert  { @apply bg-yellow-500 hover:bg-yellow-600;}
+    .btn-access { @apply bg-green-600 hover:bg-green-700; }
+
+    /* Pressed state */
+    .btn-round:active {
+        @apply transform scale-95 shadow-inner;
+    }
 
     .main { @apply flex-1 flex flex-col gap-4 p-4 overflow-auto; }
 

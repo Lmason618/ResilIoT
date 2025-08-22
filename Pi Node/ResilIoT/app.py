@@ -1,7 +1,8 @@
+from flask import Flask
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.api import api_bp
-
+from routes.dynaminsert import dynaminsert_bp
 from utils.db_helpers import init_user_db
 
 app = Flask(__name__)
@@ -11,6 +12,7 @@ app.secret_key = 'supersecretkey'
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(dynaminsert_bp)
 
 # Init user DB
 init_user_db()
