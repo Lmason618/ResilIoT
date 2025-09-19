@@ -37,6 +37,14 @@
             <input type="number" id="{{ level|lower }}_soil_max" name="{{ level }}[soil_max]"
                    value="{{ thresholds[level]['soil_max'] if thresholds and level in thresholds else '' }}"
                    class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+            {% if level != 'Low' %}
+            <label class="block text-sm mb-1" for="{{ level|lower }}_rain_thresh">Rain Threshold (mm/min)</label>
+            <input type="number" step="0.1" id="{{ level|lower }}_rain_thresh" name="{{ level }}[rain_thresh]"
+                   value="{{ thresholds[level]['rain_thresh'] if thresholds and level in thresholds else '' }}"
+                   class="w-full px-3 py-2 rounded bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            {% endif %}
+
         </div>
         {% endfor %}
 

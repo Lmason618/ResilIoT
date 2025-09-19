@@ -6,6 +6,8 @@ import traceback
 from collections import defaultdict
 import os, json
 from utils.params_helper import load_thresholds, save_thresholds
+import threading
+from alert_sender import send_encrypted_alert_broadcast
 
 api_bp = Blueprint('api', __name__)
 DB_PATH = './db/sensor_data.db'
@@ -35,19 +37,19 @@ def _get_latest_data():
             "SELECT * FROM sensor_readings WHERE sensor_id=3 ORDER BY timestamp DESC LIMIT 1"
         )
 
-    return {
-        "soil": soil_row["soil"] if soil_row and soil_row["soil"] is not None else 0,
-        "temp": soil_row["temp"] if soil_row and soil_row["temp"] is not None else 0,
-        "hum": soil_row["hum"] if soil_row and soil_row["hum"] is not None else 0,
-        "rain": soil_row["rain"] if soil_row and soil_row["rain"] is not None else 0,
-        "total_rain": soil_row["total_daily_rain"] if soil_row and soil_row["total_daily_rain"] is not None else 0,
-        "river": river_row["river"] if river_row and river_row["river"] is not None else 0,
-        "alert_level": soil_row["alert_level"] if soil_row and "alert_level" in soil_row.keys() else "normal"
-    }
+        data = {
+            "soil": soil_row["soil"] if soil_row and soil_row["soil"] is not None else 0,
+            "temp": soil_row["temp"] if soil_row and soil_row["temp"] is not None else 0,
+            "hum": soil_row["hum"] if soil_row and soil_row["hum"] is not None else 0,
+            "rain": soil_row["rain"] if soil_row and soil_row["rain"] is not None else 0,
+            "total_rain": soil_row["total_daily_rain"] if soil_row and soil_row["total_daily_rain"] is not None else 0,
+            "river": river_row["river"] if river_row and river_row["river"] is not None else 0,
+            "alert_level": soil_row["alert_level"] if soil_row and "alert_level" in soil_row.keys() else "normal"
+        }
 
+        return data
     finally:
-        conn.close()
-    return data
+    conn.close()
 
 @api_bp.route('/latest')
 @login_required
@@ -228,6 +230,15 @@ def set_thresholds_page():
                     if raw == '':
                         raise ValueError(f"Missing value for {key}")
                     lv[field] = float(raw) if field == 'river_max' else int(raw)
+
+                # Handles rain threshold only for Mid/High
+                if level in ['Mid', 'High']:
+                    key = f"{level}[rain_thresh]"
+                    raw = request.form.get(key, '').strip()
+                    if raw == '':
+                        raise ValueError(f"Missing value for {key}")
+                    lv['rain_thresh'] = float(raw)
+
                 new_values[level] = lv
 
             # Some Basic validation; look at later!
@@ -246,6 +257,15 @@ def set_thresholds_page():
                     thresholds=thresholds,
                     error="River Max must follow Low ≤ Mid ≤ High"
                 ), 400
+
+            # Validation: rain_thresh >= 0
+            for level in ['Mid', 'High']:
+                if new_values[level]['rain_thresh'] < 0:
+                    return render_template(
+                        'params.html',
+                        thresholds=thresholds,
+                        error=f"{level}: rain_thresh must be >= 0"
+                    ), 400
 
             # After successful save
             save_thresholds(new_values)
@@ -274,24 +294,37 @@ def latest_alert():
         soil = latest_data.get("soil", 0)
         river = latest_data.get("river", 0)
         high_level_alert = latest_data.get("high_level_alert", 0)
-
-        rain_intensity = (forecast_data.get("forecast", {}).get("precip_intensity") or "none").lower()
+        rain_now = latest_data.get("rain", 0)
+        forecast_rain = (forecast_data.get("forecast", {}).get("precip_intensity") or "none").lower()
 
         T = load_thresholds()
 
         alert = "None"
-        if river > T["High"]["river_max"] or high_level_alert == 1:
+        # High priority
+        if river >= T["High"]["river_max"] \
+                or soil >= T["High"]["soil_min"] and forecast_rain in ["Mid", "High"] \
+                or rain_now >= 5 \
+                or high_level_alert == 1:
             alert = "High"
-        elif T["Low"]["soil_min"] <= soil <= T["Low"]["soil_max"]:
-            if rain_intensity in ["none", "light"]:
-                alert = "None"
-            elif rain_intensity in ["moderate", "heavy"]:
-                alert = "Low" if river <= T["Low"]["river_max"] else "Mid"
-        elif soil < T["Low"]["soil_min"] or soil > T["Low"]["soil_max"]:
-            if rain_intensity == "moderate" and river <= T["Mid"]["river_max"]:
-                alert = "Mid"
-            if rain_intensity == "heavy" or high_level_alert == 1:
-                alert = "High"
+
+        # Mid priority
+        elif river >= T["Mid"]["river_max"] \
+                or (T["Mid"]["soil_min"] <= soil <= T["Mid"]["soil_max"] and forecast_rain in ["Mid", "High"]) \
+                or rain_now >= 3:
+            alert = "Mid"
+
+        # Low priority
+        elif river >= T["Low"]["river_max"] \
+                or (T["Low"]["soil_min"] <= soil <= T["Low"]["soil_max"] and forecast_rain in ["Low", "Mid"]) \
+                or forecast_rain == "Low":
+            alert = "Low"
+
+        # None
+        else:
+            alert = "None"
+
+        #Broadcasts the alert over Wi-Fi
+        send_encrypted_alert_broadcast(alert)
 
         return jsonify({"level": alert})
     except Exception as e:

@@ -1,4 +1,4 @@
-// ESP8266 UDP receiver for ChaCha20-Poly1305 encrypted broadcasts
+// ESP8266  receiver for ChaCha20-Poly1305 encrypted broadcasts
 
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>

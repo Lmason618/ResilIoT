@@ -7,11 +7,7 @@ from routes.dynaminsert import dynaminsert_bp
 from utils.db_helpers import init_user_db
 
 def create_app(test_config=None):
-    """
-    Flask application factory.
-    :param test_config: optional dict to override config (useful for testing)
-    :return: Flask app
-    """
+
     app = Flask(__name__)
     app.secret_key = 'supersecretkey'
 
@@ -25,7 +21,7 @@ def create_app(test_config=None):
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(dynaminsert_bp)
 
-    # Initialize user database (skip in tests)
+    # Initialise user database
     if not app.config.get("TESTING", False):
         init_user_db()
 
