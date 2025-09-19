@@ -25,70 +25,75 @@ def safe_fetchone(conn, query, params=()):
 
 THRESHOLDS_FILE = os.path.join(os.path.dirname(__file__), "..", "db", "thresholds.json")
 
-# /latest
+def _get_latest_data():
+    conn = get_conn()
+    try:
+        soil_row = safe_fetchone(conn,
+            "SELECT * FROM sensor_readings WHERE sensor_id=2 ORDER BY timestamp DESC LIMIT 1"
+        )
+        river_row = safe_fetchone(conn,
+            "SELECT * FROM sensor_readings WHERE sensor_id=3 ORDER BY timestamp DESC LIMIT 1"
+        )
+
+    return {
+        "soil": soil_row["soil"] if soil_row and soil_row["soil"] is not None else 0,
+        "temp": soil_row["temp"] if soil_row and soil_row["temp"] is not None else 0,
+        "hum": soil_row["hum"] if soil_row and soil_row["hum"] is not None else 0,
+        "rain": soil_row["rain"] if soil_row and soil_row["rain"] is not None else 0,
+        "total_rain": soil_row["total_daily_rain"] if soil_row and soil_row["total_daily_rain"] is not None else 0,
+        "river": river_row["river"] if river_row and river_row["river"] is not None else 0,
+        "alert_level": soil_row["alert_level"] if soil_row and "alert_level" in soil_row.keys() else "normal"
+    }
+
+    finally:
+        conn.close()
+    return data
+
 @api_bp.route('/latest')
 @login_required
 def latest():
     try:
-        conn = get_conn()
-        try:
-            soil_row = safe_fetchone(conn,
-                "SELECT * FROM sensor_readings WHERE sensor_id=2 ORDER BY timestamp DESC LIMIT 1"
-            )
-            river_row = safe_fetchone(conn,
-                "SELECT * FROM sensor_readings WHERE sensor_id=3 ORDER BY timestamp DESC LIMIT 1"
-            )
-        finally:
-            conn.close()
-
-        data = {
-            "soil": soil_row["soil"] if soil_row and soil_row["soil"] is not None else 0,
-            "temp": soil_row["temp"] if soil_row and soil_row["temp"] is not None else 0,
-            "hum": soil_row["hum"] if soil_row and soil_row["hum"] is not None else 0,
-            "rain": soil_row["rain"] if soil_row and soil_row["rain"] is not None else 0,
-            "total_rain": soil_row["total_daily_rain"] if soil_row and soil_row["total_daily_rain"] is not None else 0,
-            "river": river_row["river"] if river_row and river_row["river"] is not None else 0,
-            "alert_level": soil_row["alert_level"] if soil_row and "alert_level" in soil_row.keys() else "normal"
-        }
-        return jsonify(data)
-
+        return jsonify(_get_latest_data())
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-# /forecast/today
+
+def _get_forecast_today():
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    conn = get_conn()
+    try:
+        forecast_row = safe_fetchone(conn,
+            "SELECT * FROM forecast WHERE date = ?",
+            (today_str,)
+        )
+    finally:
+        conn.close()
+
+    if not forecast_row:
+        return None
+
+    return {
+        "forecast": {
+            "min_temp": forecast_row["min_temp"],
+            "max_temp": forecast_row["max_temp"],
+            "has_precip": forecast_row["has_precip"],
+            "precip_prob": forecast_row["precip_prob"],
+            "precip_intensity": forecast_row["precip_intensity"]
+        }
+    }
+
 @api_bp.route('/forecast/today')
 @login_required
 def forecast_today():
     try:
-        today_str = datetime.now().strftime('%Y-%m-%d')
-        conn = get_conn()
-        try:
-            forecast_row = safe_fetchone(conn,
-                "SELECT * FROM forecast WHERE date = ?",
-                (today_str,)
-            )
-        finally:
-            conn.close()
-
-        if not forecast_row:
+        data = _get_forecast_today()
+        if not data:
             return jsonify({"forecast": {}, "rain_intensity": "None", "error": "No forecast found"}), 404
-
-        data = {
-            "forecast": {
-                "min_temp": forecast_row["min_temp"],
-                "max_temp": forecast_row["max_temp"],
-                "has_precip": forecast_row["has_precip"],
-                "precip_prob": forecast_row["precip_prob"],
-                "precip_intensity": forecast_row["precip_intensity"]
-            },
-        }
         return jsonify(data)
-
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"forecast": {}, "rain_intensity": "None", "error": str(e)}), 500
-
 
 #/historic/<period_range>
 @api_bp.route('/historic/<period_range>')
@@ -263,43 +268,25 @@ def set_thresholds_page():
 @login_required
 def latest_alert():
     try:
-        # Get latest sensor values
-        try:
-            latest_data = latest().get_json(force=True)
-        except Exception as e:
-            print(f"[latest_alert] Error fetching latest data: {e}")
-            latest_data = {}
+        latest_data = _get_latest_data()
+        forecast_data = _get_forecast_today() or {}
 
         soil = latest_data.get("soil", 0)
         river = latest_data.get("river", 0)
         high_level_alert = latest_data.get("high_level_alert", 0)
 
-        # Get today's forecast
-        try:
-            forecast_data = forecast_today().get_json(force=True)
-        except Exception as e:
-            print(f"[latest_alert] Error fetching forecast data: {e}")
-            forecast_data = {}
-
         rain_intensity = (forecast_data.get("forecast", {}).get("precip_intensity") or "none").lower()
 
-        # Load thresholds from JSON
         T = load_thresholds()
 
-        # Start with None
         alert = "None"
-
-        # Immediate High conditions
         if river > T["High"]["river_max"] or high_level_alert == 1:
             alert = "High"
-        # Soil in safe range → None or Low depending on rain
         elif T["Low"]["soil_min"] <= soil <= T["Low"]["soil_max"]:
             if rain_intensity in ["none", "light"]:
                 alert = "None"
             elif rain_intensity in ["moderate", "heavy"]:
-                # Only Low if river is below the Low threshold
                 alert = "Low" if river <= T["Low"]["river_max"] else "Mid"
-        # Soil outside safe range → Mid (moderate + river below mid) or High (heavy or immediate)
         elif soil < T["Low"]["soil_min"] or soil > T["Low"]["soil_max"]:
             if rain_intensity == "moderate" and river <= T["Mid"]["river_max"]:
                 alert = "Mid"
@@ -307,8 +294,6 @@ def latest_alert():
                 alert = "High"
 
         return jsonify({"level": alert})
-
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({"level": "No data", "error": str(e)}), 500
-
