@@ -1,11 +1,9 @@
-// ESP8266  receiver for ChaCha20-Poly1305 encrypted broadcasts
-
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <Crypto.h>
 #include <ChaChaPoly.h>
 
-// Match the key used on the Pi (32 bytes)
+// Match the key used on the Pi
 static const uint8_t WIFI_CHACHA_KEY[32] = {
     0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
     0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
@@ -38,7 +36,7 @@ void setup() {
   Serial.println();
 
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected - cannot listen for UDP");
+    Serial.println("WiFi not connected");
     return;
   }
 
@@ -48,7 +46,7 @@ void setup() {
   udp.begin(LOCAL_UDP_PORT);
   Serial.printf("Listening on UDP port %u\n", LOCAL_UDP_PORT);
 
-  // initialize chachapoly key
+  // initialise chachapoly key
   // API: setKey(const uint8_t *key, size_t len)
   chachapoly.setKey(WIFI_CHACHA_KEY, sizeof(WIFI_CHACHA_KEY));
 }
@@ -71,7 +69,7 @@ void loop() {
     return;
   }
 
-  // Expect at least 12 bytes nonce + 16 bytes tag (so plaintext can be zero length theoretically)
+  // Expects at least 12 bytes nonce + 16 bytes tag (so plaintext can be zero length theoretically)
   if (len < 12 + 16) {
     Serial.println("Packet too short to be valid ChachaPoly data");
     return;
@@ -83,23 +81,21 @@ void loop() {
   uint8_t* c_and_tag = buffer + 12;
   size_t c_and_tag_len = len - 12;
 
-  // Set IV/nonce on the ChaChaPoly instance
-  // Note: method names can differ between Crypto library versions.
-  // Typical API: setIV(const uint8_t *iv, size_t len)
+
   if (!chachapoly.setIV(nonce, sizeof(nonce))) {
     Serial.println("setIV failed");
     return;
   }
 
-    // Prepare output buffer (plaintext length = ciphertext length - 16 bytes tag)
+
     size_t plaintext_len = (c_and_tag_len >= 16) ? (c_and_tag_len - 16) : 0;
     uint8_t plaintext[512]; // adjust as needed
 
-    // Start decryption
+    // Start decrypt
     chachapoly.setIV(nonce, sizeof(nonce));
     chachapoly.decrypt(plaintext, c_and_tag, plaintext_len);
 
-    // Verify tag: last 16 bytes of c_and_tag
+    // Verify tag
     const uint8_t *tag = c_and_tag + plaintext_len;
     bool ok = chachapoly.checkTag(tag, 16);
 
@@ -108,13 +104,20 @@ void loop() {
       return;
     }
 
-    // Null-terminate for printing
+
     if (plaintext_len < sizeof(plaintext)) {
       plaintext[plaintext_len] = 0;
     } else {
       plaintext[sizeof(plaintext) - 1] = 0;
     }
 
+    // Relay control
     Serial.printf("Received %u-byte plaintext: %s\n", (unsigned)plaintext_len, (char*)plaintext);
-
+    if (strcmp((char*)plaintext, "High") == 0) {
+    digitalWrite(RELAY_PIN, HIGH); // turn relay ON
+    Serial.println("Relay ON");
+    } else {
+    digitalWrite(RELAY_PIN, LOW);  // turn relay OFF
+    Serial.println("Relay OFF");
+    }
 }
