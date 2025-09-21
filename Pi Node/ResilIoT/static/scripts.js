@@ -170,6 +170,20 @@ async function updateChart(range = currentRange) {
         }
     }
 }
+// Handle range button clicks
+    document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const selectedRange = btn.dataset.range;
+            if (selectedRange && selectedRange !== currentRange) {
+                currentRange = selectedRange;
+                updateChart(currentRange);
+
+                // Active button styling
+                document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+        });
+    });
 
 // Fetch alert from api.py
 async function fetchLocalAlert() {
